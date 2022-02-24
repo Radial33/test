@@ -3,12 +3,12 @@ param (
   [switch]
   $UpdateSpotify
 )
- 
+
 $PSDefaultParameterValues['Stop-Process:ErrorAction'] = [System.Management.Automation.ActionPreference]::SilentlyContinue
- 
+
 [System.Version] $minimalSupportedSpotifyVersion = '1.1.73.517'
 [System.Version] $maximalSupportedSpotifyVersion = '1.1.79.763'
- 
+
 function Get-File
 {
   param (
@@ -35,11 +35,11 @@ function Get-File
     [Int32]
     $Timeout = 10000
   )
- 
+
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
- 
+
   $useBitTransfer = $null -ne (Get-Module -Name BitsTransfer -ListAvailable) -and ($PSVersionTable.PSVersion.Major -le 5) -and ((Get-Service -Name BITS).StartType -ne [System.ServiceProcess.ServiceStartMode]::Disabled)
- 
+
   if ($useBitTransfer)
   {
     Start-BitsTransfer -Source $Uri -Destination "$($TargetFile.FullName)"
@@ -70,16 +70,16 @@ function Get-File
       $downloadedBytes = $downloadedBytes + $count
       Write-Progress -Activity "> Downloading file '$downloadedFileName'" -Status "> Downloaded ($([System.Math]::Floor($downloadedBytes/1024))K of $($totalLength)K): " -PercentComplete ((([System.Math]::Floor($downloadedBytes / 1024)) / $totalLength) * 100)
     }
- 
+
     Write-Progress -Activity "> Successfully downloaded file '$downloadedFileName'"
- 
+
     $targetStream.Flush()
     $targetStream.Close()
     $targetStream.Dispose()
     $responseStream.Dispose()
   }
 }
- 
+
 function Test-SpotifyVersion
 {
   param (
@@ -95,41 +95,41 @@ function Test-SpotifyVersion
     [System.Version]
     $TestedVersion
   )
- 
+
   process
   {
     return ($MinimalSupportedVersion.CompareTo($TestedVersion) -le 0) -and ($MaximalSupportedVersion.CompareTo($TestedVersion) -ge 0)
   }
 }
- 
+
 Write-Host @'
 ~~~~~~~~~~~~~~~~~
 Credits: Nuzair46, KUTlime, mrpond, Aetherium
 ~~~~~~~~~~~~~~~~~
 '@
- 
+
 $spotifyDirectory = Join-Path -Path $env:APPDATA -ChildPath 'Spotify'
 $spotifyExecutable = Join-Path -Path $spotifyDirectory -ChildPath 'Spotify.exe'
 $spotifyApps = Join-Path -Path $spotifyDirectory -ChildPath 'Apps'
- 
+
 [System.Version] $actualSpotifyClientVersion = (Get-ChildItem -LiteralPath $spotifyExecutable -ErrorAction:SilentlyContinue).VersionInfo.ProductVersionRaw
- 
+
 Write-Host "> Killing Spotify...`n"
 Stop-Process -Name Spotify
 Stop-Process -Name SpotifyWebHelper
- 
+
 if ($PSVersionTable.PSVersion.Major -ge 7)
 {
   Import-Module Appx -UseWindowsPowerShell
 }
- 
+
 if (Get-AppxPackage -Name SpotifyAB.SpotifyMusic)
 {
   Write-Host "> Detected not supported Microsoft Store version of Spotify.`n"
   Write-Host "> Uninstalling not supported Spotify.`n"
   Get-AppxPackage -Name SpotifyAB.SpotifyMusic | Remove-AppxPackage
 }
- 
+
 Push-Location -LiteralPath $env:TEMP
 try
 {
@@ -143,7 +143,7 @@ catch
   Read-Host '> Press any key to exit...'
   exit
 }
- 
+
 Write-Host "> Downloading newest patch...`n"
 $elfPath = Join-Path -Path $PWD -ChildPath 'chrome_elf.zip'
 try
@@ -156,13 +156,13 @@ catch
   Write-Output $_
   Start-Sleep
 }
- 
+
 Expand-Archive -Force -LiteralPath "$elfPath" -DestinationPath $PWD
 Remove-Item -LiteralPath "$elfPath" -Force
- 
+
 $spotifyInstalled = Test-Path -LiteralPath $spotifyExecutable
 $unsupportedClientVersion = ($actualSpotifyClientVersion | Test-SpotifyVersion -MinimalSupportedVersion $minimalSupportedSpotifyVersion -MaximalSupportedVersion $maximalSupportedSpotifyVersion) -eq $false
- 
+
 if (-not $spotifyInstalled -or $UpdateSpotify -or $unsupportedClientVersion)
 {
   Write-Host '> Downloading the newest Spotify setup, please wait...'
@@ -179,7 +179,7 @@ if (-not $spotifyInstalled -or $UpdateSpotify -or $unsupportedClientVersion)
     exit
   }
   New-Item -Path $spotifyDirectory -ItemType:Directory -Force | Write-Verbose
- 
+
   [System.Security.Principal.WindowsPrincipal] $principal = [System.Security.Principal.WindowsIdentity]::GetCurrent()
   $isUserAdmin = $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
   Write-Host '> Running installation...'
@@ -204,14 +204,14 @@ if (-not $spotifyInstalled -or $UpdateSpotify -or $unsupportedClientVersion)
   {
     Start-Process -FilePath "$spotifySetupFilePath"
   }
- 
+
   while ($null -eq (Get-Process -Name Spotify -ErrorAction SilentlyContinue))
   {
     Start-Sleep -Milliseconds 100
   }
- 
+
   $wshShell = New-Object -ComObject WScript.Shell
- 
+
   $desktopShortcutPath = "$env:USERPROFILE\Desktop\Spotify.lnk"
   if ((Test-Path $desktopShortcutPath) -eq $false)
   {
@@ -219,7 +219,7 @@ if (-not $spotifyInstalled -or $UpdateSpotify -or $unsupportedClientVersion)
     $desktopShortcut.TargetPath = "$env:APPDATA\Spotify\Spotify.exe"
     $desktopShortcut.Save()
   }
- 
+
   $startMenuShortcutPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Spotify.lnk"
   if ((Test-Path $startMenuShortcutPath) -eq $false)
   {
@@ -227,10 +227,10 @@ if (-not $spotifyInstalled -or $UpdateSpotify -or $unsupportedClientVersion)
     $startMenuShortcut.TargetPath = "$env:APPDATA\Spotify\Spotify.exe"
     $startMenuShortcut.Save()
   }
- 
- 
+
+
   Write-Host '> Stopping Spotify again'
- 
+
   Stop-Process -Name Spotify
   Stop-Process -Name SpotifyWebHelper
   Stop-Process -Name SpotifyFullSetup
@@ -241,59 +241,57 @@ if ((Test-Path $elfDllBackFilePath) -eq $false)
 {
   Move-Item -LiteralPath "$elfBackFilePath" -Destination "$elfDllBackFilePath" | Write-Verbose
 }
- 
+
 Write-Host '> Fixing Spotify...'
 $patchFiles = (Join-Path -Path $PWD -ChildPath 'chrome_elf.dll'), (Join-Path -Path $PWD -ChildPath 'config.ini')
- 
+
 Copy-Item -LiteralPath $patchFiles -Destination "$spotifyDirectory"
- 
-if ($RemoveAdPlaceholder)
-{
+
   $xpuiBundlePath = Join-Path -Path $spotifyApps -ChildPath 'xpui.spa'
   $xpuiUnpackedPath = Join-Path -Path (Join-Path -Path $spotifyApps -ChildPath 'xpui') -ChildPath 'xpui.js'
   $fromZip = $false
- 
+
   if (Test-Path $xpuiBundlePath)
   {
     Add-Type -Assembly 'System.IO.Compression.FileSystem'
     Copy-Item -Path $xpuiBundlePath -Destination "$xpuiBundlePath.bak"
- 
+
     $zip = [System.IO.Compression.ZipFile]::Open($xpuiBundlePath, 'update')
     $entry = $zip.GetEntry('xpui.js')
- 
+
     $reader = New-Object System.IO.StreamReader($entry.Open())
     $xpuiContents = $reader.ReadToEnd()
     $reader.Close()
- 
+
     $fromZip = $true
   }
   elseif (Test-Path $xpuiUnpackedPath)
   {
     Copy-Item -LiteralPath $xpuiUnpackedPath -Destination "$xpuiUnpackedPath.bak"
     $xpuiContents = Get-Content -LiteralPath $xpuiUnpackedPath -Raw
- 
+
     Write-Host '> Spicetify detected - You may need to reinstall BTS after running apply.';
   }
   else
   {
     Write-Host '> Could not find xpui.js, please report this issue on the Aetherium discord.'
   }
- 
+
   if ($xpuiContents)
   {
     $xpuiContents = $xpuiContents -replace '(\.ads\.leaderboard\.isEnabled)(}|\))', '$1&&false$2'
- 
+
     $xpuiContents = $xpuiContents -replace '\.createElement\([^.,{]+,{(?:spec:[^.,]+,)?onClick:[^.,]+,className:[^.]+\.[^.]+\.UpgradeButton}\),[^.(]+\(\)', ''
- 
+
     $xpuiContents = $xpuiContents -replace 'const .=.\?`.*?`:.;return .\(\)\.createElement\(".",.\(\)\(\{\},.,\{ref:.,href:.,target:"_blank",rel:"noopener nofollow"\}\),.\)', ''
- 
+
     if ($fromZip)
     {
       $writer = New-Object System.IO.StreamWriter($entry.Open())
       $writer.BaseStream.SetLength(0)
       $writer.Write($xpuiContents)
       $writer.Close()
- 
+
       $zip.Dispose()
     }
     else
@@ -301,18 +299,13 @@ if ($RemoveAdPlaceholder)
       Set-Content -LiteralPath $xpuiUnpackedPath -Value $xpuiContents
     }
   }
-}
-else
-{
-  Write-Host "> Wont remove ad placeholder and upgrade button.`n"
-}
- 
+
 $tempDirectory = $PWD
 Pop-Location
- 
+
 Remove-Item -LiteralPath $tempDirectory -Recurse
- 
+
 Write-Host 'Fixing completed, starting Spotify...'
- 
+
 Start-Process -WorkingDirectory $spotifyDirectory -FilePath $spotifyExecutable
 Write-Host 'Successfully installed BlockTheSpot.'
